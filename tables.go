@@ -15,6 +15,7 @@ type table struct {
 func newTable() *table                     { return &table{hash: make(map[value]value)} }
 func (t *table) invalidateTagMethodCache() { t.flags = 0 }
 func (t *table) atString(k string) value   { return t.hash[k] }
+func (t *table) Hash() map[value]value     { return t.hash }
 
 func newTableWithSize(arraySize, hashSize int) *table {
 	t := new(table)
@@ -213,12 +214,12 @@ func (t *table) length() int {
 }
 
 func (l *State) arrayIndex(k value) int {
-        if n, ok := l.toNumber(k); ok {
-                if i := int(n); float64(i) == n {
-                        return i
-                }
-        }
-        return -1
+	if n, ok := l.toNumber(k); ok {
+		if i := int(n); float64(i) == n {
+			return i
+		}
+	}
+	return -1
 }
 
 func (l *State) next(t *table, key int) bool {

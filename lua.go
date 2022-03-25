@@ -847,6 +847,20 @@ func (l *State) ToUserData(index int) interface{} {
 	return nil
 }
 
+// ToDic returns a hash value of the table at index.
+// Otherwise, it returns nil.
+//
+//
+func (l *State) ToDic(index int) map[value]value {
+	v := l.indexToValue(index)
+	switch v := v.(type) {
+	case *table:
+		return v.Hash()
+	default:
+		return nil
+	}
+}
+
 // ToThread converts the value at index to a Lua thread (a State). This
 // value must be a thread, otherwise the return value will be nil.
 //
