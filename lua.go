@@ -851,14 +851,46 @@ func (l *State) ToUserData(index int) interface{} {
 // Otherwise, it returns nil.
 //
 //
-func (l *State) ToDic(index int) map[value]value {
+func (l *State) ToDic(index int) map[string]interface{} {
 	v := l.indexToValue(index)
 	switch v := v.(type) {
 	case *table:
-		return v.Hash()
+		return l.throughMap(v.Hash())
 	default:
 		return nil
 	}
+}
+
+type ArrayType []interface{}
+
+func (l *State) throughMap(docMap map[value]value) map[string]interface{} {
+	ret := make(map[string]interface{})
+	for k, v := range docMap {
+		fmt.Println(k, v)
+		switch v := v.(type) {
+		case *table:
+			if v.array != nil {
+				if len(v.array) > 0 {
+					ret[k.(string)] = l.throughArray(v.array)
+				}
+			} else if v.hash != nil {
+				if len(v.hash) > 0 {
+					ret[k.(string)] = l.throughMap(v.hash)
+				}
+			}
+		default:
+			ret[k.(string)] = l.processType(v)
+		}
+	}
+	return ret
+}
+
+func (l *State) throughArray(arrayType []value) []value {
+	return arrayType
+}
+
+func (l *State) processType(x interface{}) interface{} {
+	return x
 }
 
 // ToThread converts the value at index to a Lua thread (a State). This
