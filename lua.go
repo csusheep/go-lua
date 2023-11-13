@@ -373,9 +373,9 @@ func (l *State) CallWithContinuation(argCount, resultCount, context int, continu
 //
 // The possible errors are the following:
 //
-//    RuntimeError  a runtime error
-//    MemoryError   allocating memory, the error handler is not called
-//    ErrorError    running the error handler
+//	RuntimeError  a runtime error
+//	MemoryError   allocating memory, the error handler is not called
+//	ErrorError    running the error handler
 //
 // http://www.lua.org/manual/5.2/manual.html#lua_pcall
 func (l *State) ProtectedCall(argCount, resultCount, errorFunction int) error {
@@ -847,14 +847,24 @@ func (l *State) ToUserData(index int) interface{} {
 	return nil
 }
 
+// ToArray returns an array value of the table at index.
+func (l *State) ToArray(index int) []interface{} {
+	v := l.indexToValue(index)
+	switch v := v.(type) {
+	case *table:
+		return l.throughArray(v.array)
+	default:
+		return nil
+	}
+}
+
 // ToDic returns a hash value of the table at index.
 // Otherwise, it returns nil.
-//
-//
 func (l *State) ToDic(index int) map[string]interface{} {
 	v := l.indexToValue(index)
 	switch v := v.(type) {
 	case *table:
+		// return v.Hash()
 		return l.throughMap(v.Hash())
 	default:
 		return nil
@@ -872,24 +882,58 @@ func (l *State) throughMap(docMap map[value]value) map[string]interface{} {
 			if v.array != nil {
 				if len(v.array) > 0 {
 					ret[k.(string)] = l.throughArray(v.array)
+					// docMap[k] = l.throughArray(v.array)
 				}
 			} else if v.hash != nil {
 				if len(v.hash) > 0 {
 					ret[k.(string)] = l.throughMap(v.hash)
+					// docMap[k] = l.throughMap(v.hash)
 				}
 			}
 		default:
 			ret[k.(string)] = l.processType(v)
+			// docMap[k] = l.processType(v)
 		}
 	}
 	return ret
 }
 
-func (l *State) throughArray(arrayType []value) []value {
-	return arrayType
+func (l *State) throughArray(arrayType []value) []interface{} {
+	ret := make([]interface{}, len(arrayType))
+	for i, v := range arrayType {
+		switch v := v.(type) {
+		case *table:
+			if v.array != nil {
+				if len(v.array) > 0 {
+					ret[i] = l.throughArray(v.array)
+					// arrayType[i] = l.throughArray(v.array)
+				}
+			} else if v.hash != nil {
+				if len(v.hash) > 0 {
+					ret[i] = l.throughMap(v.hash)
+					// arrayType[i] = l.throughMap(v.hash)
+				}
+			}
+		default:
+			ret[i] = l.processType(v)
+			// arrayType[i] = l.processType(v)
+		}
+	}
+	return ret
 }
 
 func (l *State) processType(x interface{}) interface{} {
+	// ret := x
+
+	// if n, ok := l.toNumber(x); ok {
+	// 	ret = int(n)
+	// 	return ret
+	// }
+
+	// if s, ok := toString(x); ok { // Bug compatibility: replace a number with its string representation.
+	// 	ret = s
+	// 	return ret
+	// }
 	return x
 }
 
@@ -1225,13 +1269,13 @@ func (l *State) Error() {
 //
 // A typical traversal looks like this:
 //
-//  // Table is on top of the stack (index -1).
-//  l.PushNil() // Add nil entry on stack (need 2 free slots).
-//  for l.Next(-2) {
-//  	key := lua.CheckString(l, -2)
-//  	val := lua.CheckString(l, -1)
-//  	l.Pop(1) // Remove val, but need key for the next iter.
-//  }
+//	// Table is on top of the stack (index -1).
+//	l.PushNil() // Add nil entry on stack (need 2 free slots).
+//	for l.Next(-2) {
+//		key := lua.CheckString(l, -2)
+//		val := lua.CheckString(l, -1)
+//		l.Pop(1) // Remove val, but need key for the next iter.
+//	}
 //
 // http://www.lua.org/manual/5.2/manual.html#lua_next
 func (l *State) Next(index int) bool {
@@ -1384,18 +1428,18 @@ func UpValueJoin(l *State, f1, n1, f2, n2 int) {
 // The following example shows how the host program can do the equivalent to
 // this Lua code:
 //
-//		a = f("how", t.x, 14)
+//	a = f("how", t.x, 14)
 //
 // Here it is in Go:
 //
-//		l.Global("f")       // Function to be called.
-//		l.PushString("how") // 1st argument.
-//		l.Global("t")       // Table to be indexed.
-//		l.Field(-1, "x")    // Push result of t.x (2nd arg).
-//		l.Remove(-2)        // Remove t from the stack.
-//		l.PushInteger(14)   // 3rd argument.
-//		l.Call(3, 1)        // Call f with 3 arguments and 1 result.
-//		l.SetGlobal("a")    // Set global a.
+//	l.Global("f")       // Function to be called.
+//	l.PushString("how") // 1st argument.
+//	l.Global("t")       // Table to be indexed.
+//	l.Field(-1, "x")    // Push result of t.x (2nd arg).
+//	l.Remove(-2)        // Remove t from the stack.
+//	l.PushInteger(14)   // 3rd argument.
+//	l.Call(3, 1)        // Call f with 3 arguments and 1 result.
+//	l.SetGlobal("a")    // Set global a.
 //
 // Note that the code above is "balanced": at its end, the stack is back to
 // its original configuration. This is considered good programming practice.
